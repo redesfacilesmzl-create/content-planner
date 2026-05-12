@@ -237,8 +237,12 @@ textarea.form-control{resize:vertical;min-height:80px}
       <div class="form-group"><label class="form-label">Correo</label><input class="form-control" id="login-email" type="email" placeholder="correo@ejemplo.com"/></div>
       <div class="form-group"><label class="form-label">Contraseña</label><input class="form-control" id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
       <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()" id="login-btn">Entrar</button>
-    </div>
-    <div id="register-form" style="display:none">
+<div style="text-align:center;margin-top:12px">
+  <button onclick="resetPassword()" style="background:none;border:none;color:var(--orange);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;text-decoration:underline">
+    ¿Olvidaste tu contraseña?
+  </button>
+</div>
+      <div id="register-form" style="display:none">
       <div class="form-group"><label class="form-label">Nombre del cliente</label><input class="form-control" id="reg-name" placeholder="Nombre o empresa"/></div>
       <div class="form-group"><label class="form-label">Correo</label><input class="form-control" id="reg-email" type="email" placeholder="correo@ejemplo.com"/></div>
       <div class="form-group"><label class="form-label">Contraseña temporal</label><input class="form-control" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres"/></div>
@@ -355,7 +359,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -440,6 +444,17 @@ window.doLogin = async () => {
   catch(e){ showError('Correo o contraseña incorrectos'); }
   btn.textContent='Entrar'; btn.disabled=false;
 };
+  window.resetPassword = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){ showError('Ingresa tu correo primero'); return; }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showError('');
+    alert('✓ Correo de recuperación enviado a ' + email + '. Revisa tu bandeja de entrada.');
+  } catch(e) {
+    showError('No encontramos ese correo. Verifica que esté bien escrito.');
+  }
+};
 window.doRegister = async () => {
   const name=document.getElementById('reg-name').value.trim(), email=document.getElementById('reg-email').value.trim(), pass=document.getElementById('reg-pass').value;
   if(!name||!email||!pass){showError('Completa todos los campos');return;}
@@ -453,8 +468,16 @@ window.doRegister = async () => {
   }catch(e){ showError(e.code==='auth/email-already-in-use'?'Ese correo ya está registrado':'Error: '+e.message); }
   btn.textContent='Crear cliente'; btn.disabled=false;
 };
-window.doLogout = async () => { if(pubsUnsub) pubsUnsub(); await signOut(auth); };
-
+  window.doLogout = async () => {
+  if(pubsUnsub) pubsUnsub();
+  viewingClientId = null;
+  publications = [];
+  units = [];
+  aiContext = {business:'',market:'',messages:[]};
+  await signOut(auth);
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+};
 onAuthStateChanged(auth, async user => {
   document.getElementById('loading-screen').style.display='none';
   if(!user){
